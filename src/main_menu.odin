@@ -6,6 +6,7 @@ import rl "vendor:raylib"
 update_main_menu :: proc() {
     if rl.IsKeyPressed(rl.KeyboardKey.SPACE)
     {
+        init_gameplay()
         current_screen = .GAMEPLAY
     }
 }

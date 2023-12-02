@@ -17,7 +17,7 @@ SCREENS :: enum {
 }
 
 startup_game_overlord :: proc(){
-    current_screen = SCREENS.MAIN_MENU
+    current_screen = .MAIN_MENU
     is_paused = false
 }
 

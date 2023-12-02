@@ -11,8 +11,10 @@ Sprite :: struct {
 
 Entity_Type :: enum {
     ENT_PLAYER,
+    ENT_PLAYER_TWO,
     ENT_WALL,
-    ENT_SPIKE
+    ENT_SPIKE,
+    ENT_AI,
 }
 
 Entity :: struct {
@@ -41,6 +43,16 @@ Spike_Data :: struct {
     trigger_timer   : f32,
     trigger_delay   : f32,
     trigger_dur     : f32,
+}
+
+AI_Data :: struct {
+    ent_id      : int,
+
+    active      : bool,
+
+    move_timer  : f32,
+    move_delay  : f32,
+    last_pos    : rl.Vector2,
 }
 
 Background :: struct {
