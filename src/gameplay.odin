@@ -10,34 +10,36 @@ FILE :: string(#load(FILENAME))
 p_data          : Player_Data
 
 entity_pool     : [256]Entity
-entity_count    : int
+entity_count    : int           = 1
 spawn_timer     : f32 
 
 init_gameplay :: proc() {
     using rl
 
-    {// Create Player
-        p_data.speed    = 40
-        p_data.velocity = 0
-        p_data.move_dir = Vector2{0,0}
-
-        p : Entity
-        
-        p.active = true
-        p.type = .ENT_PLAYER
-        p.rec = Rectangle{ f32(3 * 16 * SCALE), f32(8 * 16 * SCALE), f32(16 * SCALE), f32(16 * SCALE) }
-        
-        p.spr.color = C_PLAYER
-        p.spr.src = Rectangle{ 64, 0, 16, 16 }
-
-        entity_pool[entity_count] = p
-        entity_count += 1
-    }
-
-    read_level();
+    read_level_file();
 }
 
-read_level :: proc() {
+create_player :: proc(X, Y : int) {
+    using rl
+
+    p_data.speed    = 40
+    p_data.velocity = 0
+    p_data.move_dir = Vector2{0,0}
+
+    p : Entity
+    
+    p.active = true
+    p.type = .ENT_PLAYER
+    p.rec = Rectangle{ f32(3 * 16 * SCALE), f32(8 * 16 * SCALE), f32(16 * SCALE), f32(16 * SCALE) }
+    
+    p.spr.color = C_PLAYER
+    p.spr.src = Rectangle{ 64, 0, 16, 16 }
+
+    entity_pool[0] = p
+    entity_count += 1
+}
+
+read_level_file :: proc() {
     using fmt
 
     file_lines := strings.split_lines(FILE)
@@ -56,7 +58,27 @@ read_level :: proc() {
                 }
                 case '1':
                 {
-                    create_wall_at(x, y);
+                    create_wall_at(x, y)
+                }
+                case '2':
+                {
+                    create_player(x, y)
+                }
+                case '3':
+                {
+                    create_spike_at_dir(x, y, 3)
+                }
+                case '4':
+                {
+                    create_spike_at_dir(x, y, 4)
+                }
+                case '5':
+                {
+                    create_spike_at_dir(x, y, 5)
+                }
+                case '6':
+                {
+                    create_spike_at_dir(x, y, 6)
                 }
             }
 
@@ -66,6 +88,26 @@ read_level :: proc() {
         x = 0
         y += 1
     }
+}
+
+create_spike_at_dir :: proc (X, Y, DIR : int)
+{
+    using rl
+
+    s : Entity
+
+    s.active = true
+    s.type   = .ENT_SPIKE
+    s.id     = {f32(X), f32(Y)}
+
+    s.spr.src = Rectangle{ f32(80 + (16 * (DIR - 3))), 16, 16, 16}
+    s.spr.color = C_SPIKE 
+    s.rot = 0
+    s.rec = Rectangle{ f32(X * 16 * SCALE), f32(Y * 16 * SCALE), f32(16 * SCALE), f32(16 * SCALE) }
+
+
+    entity_pool[entity_count] = s
+    entity_count += 1
 }
 
 create_wall_at :: proc(X, Y : int)
@@ -188,6 +230,16 @@ update_player :: proc() {
                 }
             }
         }
+        if e.type == .ENT_SPIKE
+        {
+            if e.active
+            {
+                if CheckCollisionRecs(entity_pool[0].rec, e.rec)
+                {
+                    fmt.printf("SPIKE\n")
+                }
+            }
+        }
     }
 
     if !p_data.is_moving
@@ -217,8 +269,9 @@ render_gameplay :: proc() {
         }
 
         {// entities
-            render_ent_of_type(.ENT_WALL, false) 
-            render_ent_of_type(.ENT_PLAYER, false) 
+            render_ent_of_type(.ENT_WALL, true) 
+            render_ent_of_type(.ENT_SPIKE, true)
+            render_ent_of_type(.ENT_PLAYER, true) 
         }
     }
 
@@ -242,17 +295,30 @@ render_ent_of_type :: proc(TYPE : Entity_Type, DEBUG : bool)
     for i := 0; i < entity_count; i+= 1
     {
         e = entity_pool[i]
-
-        if e.active
+        
+        if e.type == TYPE
         {
-            e.rec.x += 10
-            e.rec.y += 10
 
-            DrawTexturePro(TEX_SPRITESHEET, e.spr.src, e.rec, Vector2{e.rec.width/2, e.rec.height/2}, f32(e.rot), e.spr.color)
-            
-            if DEBUG
+            if e.active
             {
-                DrawRectangleLinesEx(e.rec, 2, RED)
+                e.rec.x += 15
+                e.rec.y += 15
+
+                if e.type == .ENT_PLAYER
+                {
+                    e.rec.x += e.rec.width/2
+                    e.rec.y += e.rec.height/2
+                    DrawTexturePro(TEX_SPRITESHEET, e.spr.src, e.rec, Vector2{e.rec.width/2, e.rec.height/2}, f32(e.rot), e.spr.color)
+                }
+                else 
+                {
+                    DrawTexturePro(TEX_SPRITESHEET, e.spr.src, e.rec, Vector2{0,0}, f32(e.rot), e.spr.color)
+                }
+                
+                if DEBUG
+                {
+                    DrawRectangleLinesEx(e.rec, 2, RED)
+                }
             }
         }
     }

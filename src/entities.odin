@@ -12,6 +12,7 @@ Sprite :: struct {
 Entity_Type :: enum {
     ENT_PLAYER,
     ENT_WALL,
+    ENT_SPIKE
 }
 
 Entity :: struct {
