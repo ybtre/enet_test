@@ -11,6 +11,8 @@ p_data          : Player_Data
 
 entity_pool     : [256]Entity
 entity_count    : int           = 1
+spike_dt_pool   : [16]Spike_Data
+spike_dt_count  : int     
 spawn_timer     : f32 
 
 init_gameplay :: proc() {
@@ -31,6 +33,7 @@ create_player :: proc(X, Y : int) {
     p.active = true
     p.type = .ENT_PLAYER
     p.rec = Rectangle{ f32(3 * 16 * SCALE), f32(8 * 16 * SCALE), f32(16 * SCALE), f32(16 * SCALE) }
+    p.id = 0
     
     p.spr.color = C_PLAYER
     p.spr.src = Rectangle{ 64, 0, 16, 16 }
@@ -98,7 +101,8 @@ create_spike_at_dir :: proc (X, Y, DIR : int)
 
     s.active = true
     s.type   = .ENT_SPIKE
-    s.id     = {f32(X), f32(Y)}
+    s.id = int(GetRandomValue(1001, 2000))
+    //fmt.printf("ID %i\n", s.id)
 
     s.spr.src = Rectangle{ f32(80 + (16 * (DIR - 3))), 16, 16, 16}
     s.spr.color = C_SPIKE 
@@ -108,6 +112,21 @@ create_spike_at_dir :: proc (X, Y, DIR : int)
 
     entity_pool[entity_count] = s
     entity_count += 1
+
+    sd : Spike_Data
+
+    sd.ent_id = s.id
+
+    sd.active = s.active
+    sd.trigger = false
+    sd.can_kill = false
+
+    sd.trigger_timer = 0
+    sd.trigger_delay = .3
+    sd.trigger_dur   = 1
+
+    spike_dt_pool[spike_dt_count] = sd
+    spike_dt_count += 1
 }
 
 create_wall_at :: proc(X, Y : int)
@@ -125,7 +144,8 @@ create_wall_at :: proc(X, Y : int)
 
     w.active = true
     w.type = .ENT_WALL
-    w.id = {f32(X), f32(Y)}
+    w.id = int(GetRandomValue(100, 1000))
+    //printf("ID %i\n", w.id)
 
     w.spr.src = Rectangle{ 0, 64, 16, 16 }
     w.spr.color = C_TILE
@@ -147,7 +167,7 @@ update_gameplay :: proc() {
         is_paused = !is_paused
     }
 
-    update_player()
+    update_entities()
 
     if !is_paused
     {   
@@ -160,8 +180,9 @@ update_gameplay :: proc() {
     }
 }
 
-update_player :: proc() {
+update_entities :: proc() {
     using rl
+    using fmt
 
     if IsKeyPressed(KeyboardKey.LEFT) && !p_data.is_moving
     {
@@ -192,6 +213,47 @@ update_player :: proc() {
 
     entity_pool[0].rec.x += p_data.move_dir.x * p_data.speed
     entity_pool[0].rec.y += p_data.move_dir.y * p_data.speed
+
+    //for sd in spike_dt_pool
+    for i := 0; i < spike_dt_count; i+=1
+    {
+        if spike_dt_pool[i].trigger 
+        {
+            spike_dt_pool[i].trigger_timer += GetFrameTime()
+        }
+    }
+
+    for i := 0; i < spike_dt_count; i+=1
+    {
+        timer := spike_dt_pool[i].trigger_timer
+        delay := spike_dt_pool[i].trigger_delay
+        dur   := spike_dt_pool[i].trigger_dur
+        if timer > delay && timer < (delay + dur)
+        {
+            for j := 0; j < entity_count; j+=1
+            {
+                if entity_pool[j].id == spike_dt_pool[i].ent_id
+                {
+                    entity_pool[j].spr.src.y = 0
+                    spike_dt_pool[i].can_kill = true
+                }
+            }
+        }
+        else if timer > (delay + dur)
+        {
+            spike_dt_pool[i].trigger_timer = 0
+            spike_dt_pool[i].trigger = false
+            spike_dt_pool[i].can_kill = false
+            for j := 0; j < entity_count; j+=1
+            {
+                if entity_pool[j].id == spike_dt_pool[i].ent_id
+                {
+                    entity_pool[j].spr.src.y = 16
+                }
+            }
+        }
+    }
+    
     
     for e in entity_pool
     {
@@ -236,7 +298,34 @@ update_player :: proc() {
             {
                 if CheckCollisionRecs(entity_pool[0].rec, e.rec)
                 {
-                    fmt.printf("SPIKE\n")
+                    //get spike data from current ent
+                    for i := 0; i < spike_dt_count; i+=1
+                    {
+                        if spike_dt_pool[i].ent_id == e.id
+                        {
+                            if spike_dt_pool[i].trigger == false
+                            {
+                                spike_dt_pool[i].trigger = true
+                                //fmt.printf("FIRE SPIKE\n")
+                            }
+                        }
+                    }
+                }
+
+                if CheckCollisionRecs(entity_pool[0].rec, e.rec)
+                {
+                    //get spike data from current ent
+                    for i := 0; i < spike_dt_count; i+=1
+                    {
+                        if spike_dt_pool[i].ent_id == e.id
+                        {
+                            if spike_dt_pool[i].can_kill
+                            {
+                                //fmt.printf("KILL PLAYER\n")
+                                entity_pool[0].active = false
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -269,9 +358,9 @@ render_gameplay :: proc() {
         }
 
         {// entities
-            render_ent_of_type(.ENT_WALL, true) 
-            render_ent_of_type(.ENT_SPIKE, true)
-            render_ent_of_type(.ENT_PLAYER, true) 
+            render_ent_of_type(.ENT_WALL, false) 
+            render_ent_of_type(.ENT_SPIKE, false)
+            render_ent_of_type(.ENT_PLAYER, false) 
         }
     }
 

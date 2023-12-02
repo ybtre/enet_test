@@ -18,7 +18,7 @@ Entity_Type :: enum {
 Entity :: struct {
     active      : bool,
     type        : Entity_Type,
-    id          : rl.Vector2,
+    id          : int,
     rec         : rl.Rectangle,
     rot         : int,
     spr         : Sprite,
@@ -29,6 +29,18 @@ Player_Data :: struct {
     speed       : f32,
     velocity    : f32,
     move_dir    : rl.Vector2,
+}
+
+Spike_Data :: struct {
+    ent_id      : int,
+
+    active      : bool,
+    trigger     : bool,
+    can_kill    : bool,
+
+    trigger_timer   : f32,
+    trigger_delay   : f32,
+    trigger_dur     : f32,
 }
 
 Background :: struct {
