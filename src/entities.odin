@@ -17,13 +17,23 @@ Entity_Type :: enum {
 Entity :: struct {
     active      : bool,
     type        : Entity_Type,
+    id          : rl.Vector2,
     rec         : rl.Rectangle,
+    rot         : int,
     spr         : Sprite,
 }
 
 Player_Data :: struct {
+    is_moving   : bool,
     speed       : f32,
+    velocity    : f32,
     move_dir    : rl.Vector2,
+}
+
+Background :: struct {
+    active      : bool,
+    rec         : rl.Rectangle,
+    spr         : Sprite,
 }
 
 Cursor :: struct {
@@ -35,8 +45,4 @@ Button :: struct {
     spr: Sprite,
     is_highlighted: bool,
     is_pressed: bool,
-}
-
-Background :: struct {
-    spr: Sprite,
 }

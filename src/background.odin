@@ -6,17 +6,17 @@ bg : Background
 bg_tex : rl.Texture2D
 
 setup_background :: proc(){
-    // bg_tex = rl.LoadTexture("../assets/paper_background.png")
+    using rl
+    bg_tex = LoadTexture("../assets/background.png")
 
-    /*
-    bg.spr.src = { 0, 0, SCREEN.x, SCREEN.y}
-    bg.spr.dest =  { 0, 0, bg.spr.src.width , bg.spr.src.height}
-    bg.spr.center = { 0, 0 }
-    */
+    bg.active = true
+    bg.rec = Rectangle{ 0, 0, 720, 720}
+    bg.spr.src = Rectangle{0,0,1024,1024}
+    bg.spr.color = C_BACKGROUND
 }
 
 render_background :: proc(){
-    //rl.DrawTexturePro(bg_tex, bg.spr.src, bg.spr.dest, bg.spr.center, 0, rl.WHITE)
+    rl.DrawTexturePro(bg_tex, bg.spr.src, bg.rec, bg.spr.center, 0, C_BACKGROUND)
 }
 
 unload_background :: proc() {
