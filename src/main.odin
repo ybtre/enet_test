@@ -57,7 +57,8 @@ setup_game :: proc()
 
     setup_background()
 
-    setup_board()
+    init_gameplay()
+    //setup_board()
     // setup_buttons()
     // set_btn_pos(&buttons[0], rl.Vector2{ 400, 700})
     // set_btn_pos(&buttons[1], rl.Vector2{ 600, 700})
