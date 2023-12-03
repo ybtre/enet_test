@@ -24,9 +24,11 @@ Entity :: struct {
     rec         : rl.Rectangle,
     rot         : int,
     spr         : Sprite,
+    spawn_id    : rl.Vector2
 }
 
 Player_Data :: struct {
+    ent_id      : int,
     is_moving   : bool,
     speed       : f32,
     velocity    : f32,

@@ -2,6 +2,7 @@ package fantasy_chess
 
 import "core:fmt"
 import "core:strings"
+import "core:math"
 import rl "vendor:raylib"
 
 SMALL :: `level_small.txt`
@@ -23,25 +24,43 @@ spike_dt_count  : int
 ai_dt_pool      : [8]AI_Data
 ai_dt_count     : int     
 
+p1_score        : int
+p2_score        : int
+
+cam             : rl.Camera2D
+cam_start_off   : rl.Vector2 
+shaking         : bool
+shake_timer     : f32
+shake_duration  : f32
+shake_intensity : f32
+
 init_gameplay :: proc() {
     using rl
 
+    p1_score = 0
+    p2_score = 0
     read_level_file();
+
+    cam.target = Vector2{ SCREEN.x / 2, SCREEN.y / 2 }
+    cam.offset = Vector2{ SCREEN.x / 2, SCREEN.y / 2 } 
+    cam_start_off = cam.offset;
+    cam.rotation = 0
+    cam.zoom = 1
+
+    shaking = false
+    shake_timer = 0
+    shake_duration = .1
+    shake_intensity = 3
 }
 
 create_player_two :: proc(X, Y : int) {
     using rl
-
-    p2_data.speed    = 40
-    p2_data.velocity = 0
-    p2_data.move_dir = Vector2{0,0}
-    p2_data.is_moving = false
-
     p : Entity
     
     p.active = true
     p.type = .ENT_PLAYER_TWO
     p.rec = Rectangle{ f32(X * 16 * SCALE), f32(Y * 16 * SCALE), f32(16 * SCALE), f32(16 * SCALE) }
+    p.spawn_id = Vector2{f32(X), f32(Y)}
     p.id = 1
     p.rot = 180
     
@@ -49,26 +68,32 @@ create_player_two :: proc(X, Y : int) {
     p.spr.src = Rectangle{ 64, 0, 16, 16 }
 
     entity_pool[1] = p
+    
+    p2_data.ent_id = p.id
+    p2_data.speed    = 30
+    p2_data.velocity = 0
+    p2_data.move_dir = Vector2{0,0}
+    p2_data.is_moving = false
 }
 create_player :: proc(X, Y : int) {
     using rl
-
-    p_data.speed    = 40
-    p_data.velocity = 0
-    p_data.move_dir = Vector2{0,0}
-    p_data.is_moving = false
-
     p : Entity
     
     p.active = true
     p.type = .ENT_PLAYER
     p.rec = Rectangle{ f32(X * 16 * SCALE), f32(Y * 16 * SCALE), f32(16 * SCALE), f32(16 * SCALE) }
+    p.spawn_id = Vector2{f32(X), f32(Y)}
     p.id = 0
     
     p.spr.color = C_PLAYER
     p.spr.src = Rectangle{ 64, 0, 16, 16 }
-
     entity_pool[0] = p
+
+    p_data.ent_id = p.id
+    p_data.speed    = 30
+    p_data.velocity = 0
+    p_data.move_dir = Vector2{0,0}
+    p_data.is_moving = false
 }
 
 read_level_file :: proc() {
@@ -238,6 +263,19 @@ update_gameplay :: proc() {
 
     update_entities()
 
+    if shaking
+    {
+        shake_timer += GetFrameTime();
+    }
+    if shaking && shake_timer <= shake_duration
+    {
+        shake_screen(&cam, shake_intensity);
+    }
+    else {
+        shaking = false;
+        shake_timer = 0;
+    }
+
     if !is_paused
     {   
         update_check_mouse_collision()
@@ -280,9 +318,6 @@ update_entities :: proc() {
 
         }
 
-        entity_pool[0].rec.x += p_data.move_dir.x * p_data.speed
-        entity_pool[0].rec.y += p_data.move_dir.y * p_data.speed
-
         if IsKeyPressed(KeyboardKey.A) && !p2_data.is_moving
         {
             p2_data.move_dir = Vector2{-1, 0}
@@ -307,8 +342,6 @@ update_entities :: proc() {
             p2_data.is_moving = true
         }
 
-        entity_pool[1].rec.x += p2_data.move_dir.x * p2_data.speed
-        entity_pool[1].rec.y += p2_data.move_dir.y * p2_data.speed
 
     //for sd in spike_dt_pool
     for i := 0; i < spike_dt_count; i+=1
@@ -350,7 +383,136 @@ update_entities :: proc() {
         }
     }
     
+    p1 := &entity_pool[0]
+    p2 := &entity_pool[1]
+    if p1.active && p2.active
+    {
+        if CheckCollisionRecs(p1.rec, p2.rec)
+        {
+            //println(p1.rec.y, p2.rec.y)
+            if p1.rec.x > p2.rec.x && p1.rec.y == p2.rec.y
+            {// p1 right p2 left
+                //println("RIGHT")
+                if p_data.is_moving && p2_data.is_moving
+                {
+                    p_data.move_dir = Vector2{+1,0}
+                    p2_data.move_dir = Vector2{-1,0}
+                    shaking = true
+                    shake_intensity = 3
+                    shake_duration = .3
+                    //p1.rec.x = f32(p2.rec.x + (16 * f32(SCALE)))
+                }
+
+                if !p_data.is_moving && p2_data.is_moving
+                {
+                    p_data.move_dir = p2_data.move_dir
+                    p2_data.move_dir = Vector2{-1,0}
+                    shaking = true
+                    shake_intensity = 3
+                    shake_duration = .3
+                }
+
+                if p_data.is_moving && !p2_data.is_moving
+                {
+                    p2_data.move_dir = p_data.move_dir
+                    p_data.move_dir = Vector2{+1,0}
+                    shaking = true
+                    shake_intensity = 3
+                    shake_duration = .3
+                }
+            }
+            if p1.rec.x < p2.rec.x && p1.rec.y == p2.rec.y
+            {// p1 left p2 right
+                if p_data.is_moving && p2_data.is_moving
+                {
+                    p_data.move_dir = Vector2{-1,0}
+                    p2_data.move_dir = Vector2{+1,0}
+                    shaking = true
+                    shake_intensity = 3
+                    shake_duration = .3
+                }
+                if !p_data.is_moving && p2_data.is_moving
+                {
+                    p_data.move_dir = p2_data.move_dir
+                    p2_data.move_dir = Vector2{+1,0}
+                    shaking = true
+                    shake_intensity = 3
+                    shake_duration = .3
+                }
+
+                if p_data.is_moving && !p2_data.is_moving
+                {
+                    p2_data.move_dir = p_data.move_dir
+                    p_data.move_dir = Vector2{-1,0}
+                    shaking = true
+                    shake_intensity = 3
+                    shake_duration = .3
+                }
+            }
+            if p1.rec.y > p2.rec.y
+            {// p1 bot p2 top
+                if p_data.is_moving && p2_data.is_moving
+                {
+                    p_data.move_dir = Vector2{0,+1}
+                    p2_data.move_dir = Vector2{0,-1}
+                    shaking = true
+                    shake_intensity = 3
+                    shake_duration = .3
+                }
+                if !p_data.is_moving && p2_data.is_moving
+                {
+                    p_data.move_dir = p2_data.move_dir
+                    p2_data.move_dir = Vector2{0,-1}
+                    shaking = true
+                    shake_intensity = 3
+                    shake_duration = .3
+                }
+
+                if p_data.is_moving && !p2_data.is_moving
+                {
+                    p2_data.move_dir = p_data.move_dir
+                    p_data.move_dir = Vector2{0,+1}
+                    shaking = true
+                    shake_intensity = 3
+                    shake_duration = .3
+                }
+            }
+            if p1.rec.y < p2.rec.y
+            {// p1 top p2 bot
+                if p_data.is_moving && p2_data.is_moving
+                {
+                    p_data.move_dir = Vector2{0,-1}
+                    p2_data.move_dir = Vector2{0,+1}
+                    shaking = true
+                    shake_intensity = 3
+                    shake_duration = .3
+                }
+                if !p_data.is_moving && p2_data.is_moving
+                {
+                    p_data.move_dir = p2_data.move_dir
+                    p2_data.move_dir = Vector2{0,+1}
+                    shaking = true
+                    shake_intensity = 3
+                    shake_duration = .3
+                }
+
+                if p_data.is_moving && !p2_data.is_moving
+                {
+                    p2_data.move_dir = p_data.move_dir
+                    p_data.move_dir = Vector2{0,-1}
+                    shaking = true
+                    shake_intensity = 3
+                    shake_duration = .3
+                }
+            }
+        }
+    }
     
+    entity_pool[0].rec.x += p_data.move_dir.x * p_data.speed
+    entity_pool[0].rec.y += p_data.move_dir.y * p_data.speed
+    entity_pool[1].rec.x += p2_data.move_dir.x * p2_data.speed
+    entity_pool[1].rec.y += p2_data.move_dir.y * p2_data.speed
+
     for e in entity_pool
     {
         if e.type == .ENT_WALL
@@ -365,21 +527,33 @@ update_entities :: proc() {
                     {// player on right
                         entity_pool[0].rec.x = f32(e.rec.x + (16 * f32(SCALE)))
                         entity_pool[0].rot = 90;
+                        shaking = true
+                        shake_intensity = 1
+                        shake_duration = .1
                     }
                     if entity_pool[0].rec.x < e.rec.x
                     {// player on left
                         entity_pool[0].rec.x = f32(e.rec.x - (16 * f32(SCALE)))
                         entity_pool[0].rot = -90;
+                        shaking = true
+                        shake_intensity = 1
+                        shake_duration = .1
                     }
                     if entity_pool[0].rec.y > e.rec.y
                     {// player on bot
                         entity_pool[0].rec.y = f32(e.rec.y + (16 * f32(SCALE)))
                         entity_pool[0].rot = 180;
+                        shaking = true
+                        shake_intensity = 1
+                        shake_duration = .1
                     }
                     if entity_pool[0].rec.y < e.rec.y
                     {// player on top
                         entity_pool[0].rec.y = f32(e.rec.y - (16 * f32(SCALE)))
                         entity_pool[0].rot = 0;
+                        shaking = true
+                        shake_intensity = 1
+                        shake_duration = .1
                     }
                 }
                 if CheckCollisionRecs(entity_pool[1].rec, e.rec)
@@ -390,21 +564,33 @@ update_entities :: proc() {
                     {// player on right
                         entity_pool[1].rec.x = f32(e.rec.x + (16 * f32(SCALE)))
                         entity_pool[1].rot = 90;
+                        shaking = true
+                        shake_intensity = 1
+                        shake_duration = .1
                     }
                     if entity_pool[1].rec.x < e.rec.x
                     {// player on left
                         entity_pool[1].rec.x = f32(e.rec.x - (16 * f32(SCALE)))
                         entity_pool[1].rot = -90;
+                        shaking = true
+                        shake_intensity = 1
+                        shake_duration = .1
                     }
                     if entity_pool[1].rec.y > e.rec.y
                     {// player on bot
                         entity_pool[1].rec.y = f32(e.rec.y + (16 * f32(SCALE)))
                         entity_pool[1].rot = 180;
+                        shaking = true
+                        shake_intensity = 1
+                        shake_duration = .1
                     }
                     if entity_pool[1].rec.y < e.rec.y
                     {// player on top
                         entity_pool[1].rec.y = f32(e.rec.y - (16 * f32(SCALE)))
                         entity_pool[1].rot = 0;
+                        shaking = true
+                        shake_intensity = 1
+                        shake_duration = .1
                     }
                 }
             }
@@ -505,9 +691,13 @@ update_entities :: proc() {
                         {
                             if spike_dt_pool[i].can_kill
                             {
-                                //fmt.printf("KILL PLAYER\n")
-                                entity_pool[0].active = false
-                                current_screen = .MAIN_MENU
+                                fmt.printf("KILL PLAYER 1\n")
+                                shaking = true
+                                shake_intensity = 20
+                                shake_duration = .1
+                                p2_score += 1
+                                respawn_player(&entity_pool[0])
+                                //current_screen = .MAIN_MENU
                             }
                         }
                     }
@@ -538,9 +728,14 @@ update_entities :: proc() {
                         {
                             if spike_dt_pool[i].can_kill
                             {
-                                //fmt.printf("KILL PLAYER\n")
-                                entity_pool[1].active = false
-                                current_screen = .MAIN_MENU
+                                fmt.printf("KILL PLAYER 2\n")
+                                shaking = true
+                                shake_intensity = 20
+                                shake_duration = .1
+                                p1_score += 1
+                                respawn_player(&entity_pool[1])
+                                //entity_pool[1].active = false
+                                //current_screen = .MAIN_MENU
                             }
                         }
                     }
@@ -553,6 +748,25 @@ update_entities :: proc() {
     if !p_data.is_moving
     {
         p_data.move_dir = Vector2{0,0}
+    }
+    if !p2_data.is_moving
+    {
+        p2_data.move_dir = Vector2{0,0}
+    }
+}
+
+respawn_player :: proc(P : ^Entity)
+{
+    using rl
+
+    if P.id == 0
+    {
+        create_player(int(P.spawn_id.x), int(P.spawn_id.y))
+    }
+
+    if P.id == 1
+    {
+        create_player_two(int(P.spawn_id.x), int(P.spawn_id.y))
     }
 }
 
@@ -589,30 +803,34 @@ check_valid_move :: proc(POS, LAST_POS : rl.Vector2) -> bool
 render_gameplay :: proc() {
     using rl
 
-    render_background()
-    
-    { //tiles
-        {//grid
-            debug_grid :: false
-            if debug_grid
-            {
-                for x := 0; x < 11; x += 1 {
-                    for y := 0; y < 11; y += 1
-                    {
-                        DrawRectangleLinesEx(Rectangle{f32((x * 16 * SCALE) + 10), f32((y * 16 * SCALE) + 10), 16 * f32(SCALE), 16 * f32(SCALE)}, 1, DARKGRAY) 
+    BeginMode2D(cam);
+	{
+        render_background()
+        
+        { //tiles
+            {//grid
+                debug_grid :: false
+                if debug_grid
+                {
+                    for x := 0; x < 11; x += 1 {
+                        for y := 0; y < 11; y += 1
+                        {
+                            DrawRectangleLinesEx(Rectangle{f32((x * 16 * SCALE) + 10), f32((y * 16 * SCALE) + 10), 16 * f32(SCALE), 16 * f32(SCALE)}, 1, DARKGRAY) 
+                        }
                     }
                 }
             }
-        }
 
-        {// entities
-            render_ent_of_type(.ENT_WALL, false) 
-            render_ent_of_type(.ENT_SPIKE, false)
-            render_ent_of_type(.ENT_PLAYER, false) 
-            render_ent_of_type(.ENT_PLAYER_TWO, false) 
-            render_ent_of_type(.ENT_AI, false)
+            {// entities
+                render_ent_of_type(.ENT_WALL, false) 
+                render_ent_of_type(.ENT_SPIKE, false)
+                render_ent_of_type(.ENT_PLAYER, true) 
+                render_ent_of_type(.ENT_PLAYER_TWO, true) 
+                render_ent_of_type(.ENT_AI, false)
+            }
         }
     }
+    EndMode2D()
 
     if is_paused && ((pause_blink_counter / 30) % 2 == 0)
     {
@@ -622,12 +840,18 @@ render_gameplay :: proc() {
     {// UI
     //    render_buttons()
         DrawText(TextFormat("Mouse: %i, %i", GetMouseX(), GetMouseY()), 20, 20, 20, GRAY)
+        DrawText(TextFormat("P1 Kill Count: %i", p1_score), 20, 40, 30, C_PLAYER)
+        DrawText(TextFormat("%f %f", entity_pool[0].rec.x, entity_pool[0].rec.y), 20, 80, 20, C_PLAYER)
+        DrawText(TextFormat("P2 Kill Count: %i", p2_score), i32(SCREEN.x - 250), 40, 30, C_PLAYER_TWO)
+        DrawText(TextFormat("%f %f", entity_pool[1].rec.x, entity_pool[1].rec.y), i32(SCREEN.x - 250), 80, 20, C_PLAYER_TWO)
     }
+    
 }
 
 render_ent_of_type :: proc(TYPE : Entity_Type, DEBUG : bool) 
 {
     using rl
+    using fmt
 
     e : Entity
 
@@ -645,9 +869,7 @@ render_ent_of_type :: proc(TYPE : Entity_Type, DEBUG : bool)
 
                 if e.type == .ENT_PLAYER || e.type == .ENT_PLAYER_TWO
                 {
-                    e.rec.x += e.rec.width/2
-                    e.rec.y += e.rec.height/2
-                    DrawTexturePro(TEX_SPRITESHEET, e.spr.src, e.rec, Vector2{e.rec.width/2, e.rec.height/2}, f32(e.rot), e.spr.color)
+                    DrawTexturePro(TEX_SPRITESHEET, e.spr.src, e.rec, Vector2{0,0}, 0, e.spr.color)
                 }
                 else 
                 {
@@ -662,5 +884,19 @@ render_ent_of_type :: proc(TYPE : Entity_Type, DEBUG : bool)
         }
 
     }
+}
 
+shake_screen :: proc(CAM : ^rl.Camera2D, INTENSITY : f32)
+{
+    using rl
+
+    if shaking 
+    {
+		cam.offset = Vector2{ math.sin_f32(f32(GetTime() * 90)) * INTENSITY, math.sin_f32(f32(GetTime() * 180)) * INTENSITY };
+		cam.offset.x += cam_start_off.x;
+		cam.offset.y += cam_start_off.y;
+	}
+	else {
+		cam.offset = cam_start_off;
+	}
 }
