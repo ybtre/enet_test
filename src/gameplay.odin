@@ -33,6 +33,12 @@ shaking         : bool
 shake_timer     : f32
 shake_duration  : f32
 shake_intensity : f32
+S_int           :: 1
+M_int           :: 5
+L_int           :: 20
+S_dur           :: .1
+M_dur           :: .2
+L_dur           :: .3
 
 init_gameplay :: proc() {
     using rl
@@ -49,8 +55,8 @@ init_gameplay :: proc() {
 
     shaking = false
     shake_timer = 0
-    shake_duration = .1
-    shake_intensity = 3
+    shake_duration = S_dur
+    shake_intensity = S_int
 }
 
 create_player_two :: proc(X, Y : int) {
@@ -398,8 +404,8 @@ update_entities :: proc() {
                     p_data.move_dir = Vector2{+1,0}
                     p2_data.move_dir = Vector2{-1,0}
                     shaking = true
-                    shake_intensity = 3
-                    shake_duration = .3
+                    shake_intensity = M_int
+                    shake_duration = L_dur
                     //p1.rec.x = f32(p2.rec.x + (16 * f32(SCALE)))
                 }
 
@@ -408,8 +414,8 @@ update_entities :: proc() {
                     p_data.move_dir = p2_data.move_dir
                     p2_data.move_dir = Vector2{-1,0}
                     shaking = true
-                    shake_intensity = 3
-                    shake_duration = .3
+                    shake_intensity = M_int
+                    shake_duration = L_dur
                 }
 
                 if p_data.is_moving && !p2_data.is_moving
@@ -417,8 +423,8 @@ update_entities :: proc() {
                     p2_data.move_dir = p_data.move_dir
                     p_data.move_dir = Vector2{+1,0}
                     shaking = true
-                    shake_intensity = 3
-                    shake_duration = .3
+                    shake_intensity = M_int
+                    shake_duration = L_dur
                 }
             }
             if p1.rec.x < p2.rec.x && p1.rec.y == p2.rec.y
@@ -428,16 +434,16 @@ update_entities :: proc() {
                     p_data.move_dir = Vector2{-1,0}
                     p2_data.move_dir = Vector2{+1,0}
                     shaking = true
-                    shake_intensity = 3
-                    shake_duration = .3
+                    shake_intensity = M_int
+                    shake_duration = L_dur
                 }
                 if !p_data.is_moving && p2_data.is_moving
                 {
                     p_data.move_dir = p2_data.move_dir
                     p2_data.move_dir = Vector2{+1,0}
                     shaking = true
-                    shake_intensity = 3
-                    shake_duration = .3
+                    shake_intensity = M_int
+                    shake_duration = L_dur
                 }
 
                 if p_data.is_moving && !p2_data.is_moving
@@ -445,8 +451,8 @@ update_entities :: proc() {
                     p2_data.move_dir = p_data.move_dir
                     p_data.move_dir = Vector2{-1,0}
                     shaking = true
-                    shake_intensity = 3
-                    shake_duration = .3
+                    shake_intensity = M_int
+                    shake_duration = L_dur
                 }
             }
             if p1.rec.y > p2.rec.y
@@ -456,16 +462,16 @@ update_entities :: proc() {
                     p_data.move_dir = Vector2{0,+1}
                     p2_data.move_dir = Vector2{0,-1}
                     shaking = true
-                    shake_intensity = 3
-                    shake_duration = .3
+                    shake_intensity = M_int
+                    shake_duration = L_dur
                 }
                 if !p_data.is_moving && p2_data.is_moving
                 {
                     p_data.move_dir = p2_data.move_dir
                     p2_data.move_dir = Vector2{0,-1}
                     shaking = true
-                    shake_intensity = 3
-                    shake_duration = .3
+                    shake_intensity = M_int
+                    shake_duration = L_dur
                 }
 
                 if p_data.is_moving && !p2_data.is_moving
@@ -473,8 +479,8 @@ update_entities :: proc() {
                     p2_data.move_dir = p_data.move_dir
                     p_data.move_dir = Vector2{0,+1}
                     shaking = true
-                    shake_intensity = 3
-                    shake_duration = .3
+                    shake_intensity = M_int
+                    shake_duration = L_dur
                 }
             }
             if p1.rec.y < p2.rec.y
@@ -484,16 +490,16 @@ update_entities :: proc() {
                     p_data.move_dir = Vector2{0,-1}
                     p2_data.move_dir = Vector2{0,+1}
                     shaking = true
-                    shake_intensity = 3
-                    shake_duration = .3
+                    shake_intensity = M_int
+                    shake_duration = L_dur
                 }
                 if !p_data.is_moving && p2_data.is_moving
                 {
                     p_data.move_dir = p2_data.move_dir
                     p2_data.move_dir = Vector2{0,+1}
                     shaking = true
-                    shake_intensity = 3
-                    shake_duration = .3
+                    shake_intensity = M_int
+                    shake_duration = L_dur
                 }
 
                 if p_data.is_moving && !p2_data.is_moving
@@ -501,8 +507,8 @@ update_entities :: proc() {
                     p2_data.move_dir = p_data.move_dir
                     p_data.move_dir = Vector2{0,-1}
                     shaking = true
-                    shake_intensity = 3
-                    shake_duration = .3
+                    shake_intensity = M_int
+                    shake_duration = L_dur
                 }
             }
         }
@@ -528,32 +534,32 @@ update_entities :: proc() {
                         entity_pool[0].rec.x = f32(e.rec.x + (16 * f32(SCALE)))
                         entity_pool[0].rot = 90;
                         shaking = true
-                        shake_intensity = 1
-                        shake_duration = .1
+                        shake_intensity = S_int
+                        shake_duration = S_dur
                     }
                     if entity_pool[0].rec.x < e.rec.x
                     {// player on left
                         entity_pool[0].rec.x = f32(e.rec.x - (16 * f32(SCALE)))
                         entity_pool[0].rot = -90;
                         shaking = true
-                        shake_intensity = 1
-                        shake_duration = .1
+                        shake_intensity = S_int
+                        shake_duration = S_dur
                     }
                     if entity_pool[0].rec.y > e.rec.y
                     {// player on bot
                         entity_pool[0].rec.y = f32(e.rec.y + (16 * f32(SCALE)))
                         entity_pool[0].rot = 180;
                         shaking = true
-                        shake_intensity = 1
-                        shake_duration = .1
+                        shake_intensity = S_int
+                        shake_duration = S_dur
                     }
                     if entity_pool[0].rec.y < e.rec.y
                     {// player on top
                         entity_pool[0].rec.y = f32(e.rec.y - (16 * f32(SCALE)))
                         entity_pool[0].rot = 0;
                         shaking = true
-                        shake_intensity = 1
-                        shake_duration = .1
+                        shake_intensity = S_int
+                        shake_duration = S_dur
                     }
                 }
                 if CheckCollisionRecs(entity_pool[1].rec, e.rec)
@@ -565,32 +571,32 @@ update_entities :: proc() {
                         entity_pool[1].rec.x = f32(e.rec.x + (16 * f32(SCALE)))
                         entity_pool[1].rot = 90;
                         shaking = true
-                        shake_intensity = 1
-                        shake_duration = .1
+                        shake_intensity = S_int
+                        shake_duration = S_dur
                     }
                     if entity_pool[1].rec.x < e.rec.x
                     {// player on left
                         entity_pool[1].rec.x = f32(e.rec.x - (16 * f32(SCALE)))
                         entity_pool[1].rot = -90;
                         shaking = true
-                        shake_intensity = 1
-                        shake_duration = .1
+                        shake_intensity = S_int
+                        shake_duration = S_dur
                     }
                     if entity_pool[1].rec.y > e.rec.y
                     {// player on bot
                         entity_pool[1].rec.y = f32(e.rec.y + (16 * f32(SCALE)))
                         entity_pool[1].rot = 180;
                         shaking = true
-                        shake_intensity = 1
-                        shake_duration = .1
+                        shake_intensity = S_int
+                        shake_duration = S_dur
                     }
                     if entity_pool[1].rec.y < e.rec.y
                     {// player on top
                         entity_pool[1].rec.y = f32(e.rec.y - (16 * f32(SCALE)))
                         entity_pool[1].rot = 0;
                         shaking = true
-                        shake_intensity = 1
-                        shake_duration = .1
+                        shake_intensity = S_int
+                        shake_duration = S_dur
                     }
                 }
             }
@@ -693,8 +699,8 @@ update_entities :: proc() {
                             {
                                 fmt.printf("KILL PLAYER 1\n")
                                 shaking = true
-                                shake_intensity = 20
-                                shake_duration = .1
+                                shake_intensity = L_int
+                                shake_duration = S_dur
                                 p2_score += 1
                                 respawn_player(&entity_pool[0])
                                 //current_screen = .MAIN_MENU
@@ -730,8 +736,8 @@ update_entities :: proc() {
                             {
                                 fmt.printf("KILL PLAYER 2\n")
                                 shaking = true
-                                shake_intensity = 20
-                                shake_duration = .1
+                                shake_intensity = L_int
+                                shake_duration = S_dur
                                 p1_score += 1
                                 respawn_player(&entity_pool[1])
                                 //entity_pool[1].active = false
