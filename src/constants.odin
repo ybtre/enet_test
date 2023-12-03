@@ -3,7 +3,9 @@ package fantasy_chess
 import rl "vendor:raylib"
 
 C_PLAYER     :: rl.Color{ 235, 162, 84, 255}
+C_PLAYER_SPAWN:: rl.Color{ 235, 162, 84, 75}
 C_PLAYER_TWO :: rl.Color{ 99, 157, 48, 255}
+C_PLAYER_TWO_SPAWN:: rl.Color{ 99, 157, 48, 75}
 C_GAME_MAP   :: rl.Color{ 255, 255, 255, 220 }
 C_CURSOR     :: rl.Color{ 209, 191, 176, 255 }
 C_TEXT       :: rl.Color{ 99, 47, 109, 255}

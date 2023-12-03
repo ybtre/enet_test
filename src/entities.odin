@@ -15,6 +15,8 @@ Entity_Type :: enum {
     ENT_WALL,
     ENT_SPIKE,
     ENT_AI,
+    ENT_SPAWN_POINT,
+    ENT_EXPLOSION,
 }
 
 Entity :: struct {
@@ -25,6 +27,18 @@ Entity :: struct {
     rot         : int,
     spr         : Sprite,
     spawn_id    : rl.Vector2
+}
+
+Explosion_Data :: struct {
+    active      : bool,
+    type        : Entity_Type,
+    id          : int,
+    spr         : Sprite,
+    rec         : rl.Rectangle,
+    rot         : f32,
+
+    timer       : f32,
+    dur         : f32,
 }
 
 Player_Data :: struct {

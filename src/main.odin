@@ -5,6 +5,7 @@ import "core:fmt"
 import rl "vendor:raylib" 
 
 main :: proc() {
+    using rl
 
 	rl.SetRandomSeed(42)
 	
@@ -12,6 +13,12 @@ main :: proc() {
 	xxx : i32 = i32(SCREEN.x)
 	yyy : i32 = i32(SCREEN.y)
 	rl.InitWindow(xxx, yyy, name)
+
+    InitAudioDevice()
+    bg_music := LoadMusicStream("../assets/bg_music.wav")
+    bg_music.looping = true
+
+
 	setup_window()
 
 	// initialize_engine()
@@ -19,7 +26,11 @@ main :: proc() {
 
 	is_running: bool = true
 	for is_running && !rl.WindowShouldClose()
-	{
+    {
+        UpdateMusicStream(bg_music)
+
+        PlayMusicStream(bg_music)
+
 		{// UPDATE
 			// update_engine()
 			update_screens()

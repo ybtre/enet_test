@@ -5,6 +5,9 @@ import "core:strings"
 import "core:math"
 import rl "vendor:raylib"
 
+// 0 - SMALL 1 - MEDIUM 2 - LARGE
+level_to_load := 0
+
 SMALL :: `level_small.txt`
 MEDIUM :: `level_medium.txt`
 LARGE :: `level_large.txt`
@@ -18,14 +21,19 @@ p2_data         : Player_Data
 entity_pool     : [512]Entity
 entity_count    : int           = 2
 
-spike_dt_pool   : [16]Spike_Data
+spike_dt_pool   : [128]Spike_Data
 spike_dt_count  : int     
 
-ai_dt_pool      : [8]AI_Data
+expl_dt_pool    : [128]Explosion_Data
+expl_count      : int
+
+ai_dt_pool      : [16]AI_Data
 ai_dt_count     : int     
 
 p1_score        : int
+p1_win          : bool
 p2_score        : int
+p2_win          : bool
 
 cam             : rl.Camera2D
 cam_start_off   : rl.Vector2 
@@ -40,8 +48,26 @@ S_dur           :: .1
 M_dur           :: .2
 L_dur           :: .3
 
+frz_frame       : bool
+frz_frame_timer : f32
+frz_frame_dur   : f32 
+
+
+button := rl.Rectangle{f32((SCREEN.x /2 - 50)), f32((SCREEN.y - 50)), 100, 40}
+
+clear_pools :: proc(){
+    entity_pool = {}
+
+    spike_dt_pool = {}
+
+    expl_dt_pool = {}
+
+    ai_dt_pool = {}
+}
 init_gameplay :: proc() {
     using rl
+
+    clear_pools()
 
     p1_score = 0
     p2_score = 0
@@ -57,6 +83,10 @@ init_gameplay :: proc() {
     shake_timer = 0
     shake_duration = S_dur
     shake_intensity = S_int
+
+    frz_frame = false
+    frz_frame_timer = 0
+    frz_frame_dur = 1
 }
 
 create_player_two :: proc(X, Y : int) {
@@ -105,12 +135,36 @@ create_player :: proc(X, Y : int) {
 read_level_file :: proc() {
     using fmt
    
-    SCALE = 4
-    file_lines := strings.split_lines(FILE_SMALL)
+    // 0 - SMALL 1 - MEDIUM 2 - LARGE
+    //level_to_load = 0
+
+    file_lines : []string 
+    switch level_to_load 
+    {
+        case 0:
+        {
+            SCALE = 4
+            file_lines = strings.split_lines(FILE_SMALL)
+        }
+        case 1:
+        {
+            SCALE = 3
+            file_lines = strings.split_lines(FILE_MEDIUM)
+        }
+        case 2:
+        {
+            SCALE = 2
+            file_lines = strings.split_lines(FILE_LARGE)
+
+        }
+    }
+    fmt.println(level_to_load, SCALE)
     defer delete(file_lines)
 
     entity_count = 2
     spike_dt_count = 0 
+    expl_count = 0
+    ai_dt_count = 0
     
     x, y : int
     for line in file_lines 
@@ -129,6 +183,7 @@ read_level_file :: proc() {
                 case '2':
                 {
                     create_player(x, y)
+                    create_spawn_point_at(x, y, 0)
                 }
                 case '3':
                 {
@@ -153,6 +208,7 @@ read_level_file :: proc() {
                 case '9':
                 {
                     create_player_two(x, y)
+                    create_spawn_point_at(x, y, 1)
                 }
             }
 
@@ -176,7 +232,7 @@ create_enemy_at :: proc(X, Y : int)
     println("CREATE ENEMY")
     e.active = true
     e.type = .ENT_AI
-    e.id = int(GetRandomValue(2001, 2500))
+    e.id = int(GetRandomValue(100, 1000))
 
     e.spr.src = Rectangle{ 64, 32, 16, 16 }
     e.spr.color = C_AI
@@ -205,7 +261,7 @@ create_spike_at_dir :: proc (X, Y, DIR : int)
 
     s.active = true
     s.type   = .ENT_SPIKE
-    s.id = int(GetRandomValue(1001, 2000))
+    s.id = int(GetRandomValue(1000, 10000))
     //fmt.printf("ID %i\n", s.id)
 
     s.spr.src = Rectangle{ f32(80 + (16 * (DIR - 3))), 16, 16, 16}
@@ -226,8 +282,14 @@ create_spike_at_dir :: proc (X, Y, DIR : int)
     sd.can_kill = false
 
     sd.trigger_timer = 0
+
     sd.trigger_delay = .3
     sd.trigger_dur   = 1
+    if level_to_load == 2
+    {
+        sd.trigger_delay = .5
+        sd.trigger_dur   = .6
+    }
 
     spike_dt_pool[spike_dt_count] = sd
     spike_dt_count += 1
@@ -248,7 +310,7 @@ create_wall_at :: proc(X, Y : int)
 
     w.active = true
     w.type = .ENT_WALL
-    w.id = int(GetRandomValue(100, 1000))
+    w.id = int(GetRandomValue(10000, 100000))
     //printf("ID %i\n", w.id)
 
     w.spr.src = Rectangle{ 0, 64, 16, 16 }
@@ -259,6 +321,32 @@ create_wall_at :: proc(X, Y : int)
     entity_pool[entity_count] = w
     entity_count += 1
 }
+create_spawn_point_at :: proc(X, Y : int, PID : int)
+{
+    using rl
+
+    e : Entity
+
+    e.active = true
+    e.type = .ENT_SPAWN_POINT
+    e.id = int(GetRandomValue(100000, 1000000))
+    //printf("ID %i\n", w.id)
+
+    e.spr.src = Rectangle{ 0, 96, 16, 16 }
+    if PID == 0
+    {
+        e.spr.color = C_PLAYER_SPAWN
+    }
+    if PID == 1
+    {
+        e.spr.color = C_PLAYER_TWO_SPAWN
+    }
+    
+    e.rec = Rectangle{ f32(X * 16 * SCALE), f32(Y * 16 * SCALE), f32(16 * SCALE), f32(16 * SCALE) }
+
+    entity_pool[entity_count] = e
+    entity_count += 1
+}
 
 update_gameplay :: proc() {
     using rl
@@ -267,7 +355,10 @@ update_gameplay :: proc() {
         is_paused = !is_paused
     }
 
-    update_entities()
+    if !frz_frame
+    {
+        update_entities()
+    }
 
     if shaking
     {
@@ -280,6 +371,30 @@ update_gameplay :: proc() {
     else {
         shaking = false;
         shake_timer = 0;
+    }
+
+    if frz_frame
+    {
+        frz_frame_timer += GetFrameTime();
+    }
+    if frz_frame && frz_frame_timer <= frz_frame_dur
+    {
+        shake_screen(&cam, shake_intensity);
+    }
+    else {
+        p1_win = false
+        p2_win = false
+        frz_frame = false;
+        frz_frame_timer = 0;
+    }
+   
+    if CheckCollisionRecs(button, rl.Rectangle{f32(GetMouseX()), f32(GetMouseY()), 2, 2})
+    {
+        if IsMouseButtonPressed(MouseButton.LEFT)
+        {
+            fmt.println("TEST")
+            current_screen = .MAIN_MENU
+        }
     }
 
     if !is_paused
@@ -605,7 +720,36 @@ update_entities :: proc() {
         {
             if e.active
             {
-                //DrawRectangleLinesEx(e.rec, 1, GREEN)
+                if CheckCollisionRecs(entity_pool[0].rec, e.rec)
+                {
+                    create_explosion_at(int(p1.rec.x), int(p1.rec.y), 0)
+                    frz_frame = true
+
+                    shaking = true
+                    shake_intensity = L_int
+                    shake_duration = S_dur
+
+                    p2_score += 1
+                    p2_win = true
+                    respawn_player(&entity_pool[0])
+                    respawn_player(&entity_pool[1])
+                }
+
+                if CheckCollisionRecs(entity_pool[1].rec, e.rec)
+                {
+                    create_explosion_at(int(p2.rec.x), int(p2.rec.y), 0)
+                    frz_frame = true
+
+                    shaking = true
+                    shake_intensity = L_int
+                    shake_duration = S_dur
+
+                    p1_score += 1
+                    p1_win = true
+                    respawn_player(&entity_pool[0])
+                    respawn_player(&entity_pool[1])
+                }
+
                 //get AI data from current ent
                 for i := 0; i < ai_dt_count; i+=1
                 {
@@ -698,11 +842,21 @@ update_entities :: proc() {
                             if spike_dt_pool[i].can_kill
                             {
                                 fmt.printf("KILL PLAYER 1\n")
+
+                                create_explosion_at(int(p1.rec.x), int(p1.rec.y), 0)
+                                println(expl_count)
+                                frz_frame = true
+
                                 shaking = true
                                 shake_intensity = L_int
                                 shake_duration = S_dur
+
                                 p2_score += 1
+                                p2_win = true
                                 respawn_player(&entity_pool[0])
+                                respawn_player(&entity_pool[1])
+
+
                                 //current_screen = .MAIN_MENU
                             }
                         }
@@ -735,10 +889,14 @@ update_entities :: proc() {
                             if spike_dt_pool[i].can_kill
                             {
                                 fmt.printf("KILL PLAYER 2\n")
+                                create_explosion_at(int(p2.rec.x), int(p2.rec.y), 1)
+                                frz_frame = true
                                 shaking = true
                                 shake_intensity = L_int
                                 shake_duration = S_dur
                                 p1_score += 1
+                                p1_win = true
+                                respawn_player(&entity_pool[0])
                                 respawn_player(&entity_pool[1])
                                 //entity_pool[1].active = false
                                 //current_screen = .MAIN_MENU
@@ -747,6 +905,21 @@ update_entities :: proc() {
                     }
                 }
             }
+        }
+    }
+
+    for i := 0; i < expl_count; i += 1
+    {
+        e := &expl_dt_pool[i]
+
+        if e.active
+        {
+           e.timer += GetFrameTime() 
+
+           if e.timer > e.dur
+           {
+               e.active = false
+           }
         }
     }
 
@@ -764,6 +937,11 @@ update_entities :: proc() {
 respawn_player :: proc(P : ^Entity)
 {
     using rl
+
+    /*
+    p1_win = false
+    p2_win = false
+    */
 
     if P.id == 0
     {
@@ -792,7 +970,7 @@ check_valid_move :: proc(POS, LAST_POS : rl.Vector2) -> bool
                     {
                         if POS == LAST_POS 
                         {   
-                            println("VBACKTRACK")
+                            //println("VBACKTRACK")
                         }
                         can_move = true
                     }
@@ -830,8 +1008,10 @@ render_gameplay :: proc() {
             {// entities
                 render_ent_of_type(.ENT_WALL, false) 
                 render_ent_of_type(.ENT_SPIKE, false)
-                render_ent_of_type(.ENT_PLAYER, true) 
-                render_ent_of_type(.ENT_PLAYER_TWO, true) 
+                render_ent_of_type(.ENT_SPAWN_POINT, false)
+                render_ent_of_type(.ENT_PLAYER, false) 
+                render_ent_of_type(.ENT_PLAYER_TWO, false) 
+                render_ent_of_type(.ENT_EXPLOSION, false) 
                 render_ent_of_type(.ENT_AI, false)
             }
         }
@@ -847,11 +1027,21 @@ render_gameplay :: proc() {
     //    render_buttons()
         DrawText(TextFormat("Mouse: %i, %i", GetMouseX(), GetMouseY()), 20, 20, 20, GRAY)
         DrawText(TextFormat("P1 Kill Count: %i", p1_score), 20, 40, 30, C_PLAYER)
-        DrawText(TextFormat("%f %f", entity_pool[0].rec.x, entity_pool[0].rec.y), 20, 80, 20, C_PLAYER)
+        if p1_win
+        {
+            DrawText(TextFormat("P1 SCORED"), i32(SCREEN.x / 2 - 150), i32(SCREEN.y) / 2 - 50, 60, C_PLAYER)
+        }
+        //DrawText(TextFormat("%f %f", entity_pool[0].rec.x, entity_pool[0].rec.y), 20, 80, 20, C_PLAYER)
         DrawText(TextFormat("P2 Kill Count: %i", p2_score), i32(SCREEN.x - 250), 40, 30, C_PLAYER_TWO)
-        DrawText(TextFormat("%f %f", entity_pool[1].rec.x, entity_pool[1].rec.y), i32(SCREEN.x - 250), 80, 20, C_PLAYER_TWO)
+        if p2_win 
+        {
+            DrawText(TextFormat("P2 SCORED"), i32(SCREEN.x / 2 - 150), i32(SCREEN.y / 2 - 50), 60, C_PLAYER_TWO)
+        }
+        //DrawText(TextFormat("%f %f", entity_pool[1].rec.x, entity_pool[1].rec.y), i32(SCREEN.x - 250), 80, 20, C_PLAYER_TWO)
+
+        DrawText(TextFormat("MENU"), i32(button.x + 20), i32(button.y + 10), 20, RED)
+        DrawRectangleLinesEx(button, 5, DARKGRAY) 
     }
-    
 }
 
 render_ent_of_type :: proc(TYPE : Entity_Type, DEBUG : bool) 
@@ -860,6 +1050,7 @@ render_ent_of_type :: proc(TYPE : Entity_Type, DEBUG : bool)
     using fmt
 
     e : Entity
+    expl : Explosion_Data
 
     for i := 0; i < entity_count; i+= 1
     {
@@ -888,7 +1079,16 @@ render_ent_of_type :: proc(TYPE : Entity_Type, DEBUG : bool)
                 }
             }
         }
+    }
 
+    for i := 0; i < expl_count; i+= 1
+    {
+        expl = expl_dt_pool[i]
+
+        if expl.active
+        {
+            DrawTexturePro(TEX_SPRITESHEET, expl.spr.src, expl.rec, Vector2{0,0}, math.sin_f32(f32(GetTime() * 90)) * 30, expl.spr.color)
+        }
     }
 }
 
@@ -905,4 +1105,38 @@ shake_screen :: proc(CAM : ^rl.Camera2D, INTENSITY : f32)
 	else {
 		cam.offset = cam_start_off;
 	}
+}
+
+create_explosion_at :: proc(X, Y, PID : int)
+{
+    using rl
+    using fmt
+
+    e : Explosion_Data
+
+    e.active = true
+    e.type = .ENT_EXPLOSION
+    e.id = int(GetRandomValue(1000000, 10000000))
+    
+    e.rot = 0
+    //printf("ID %i\n", w.id)
+
+    e.spr.src = Rectangle{ 0, 128, 13, 17 }
+    if PID == 0
+    {
+        e.spr.color = C_PLAYER_SPAWN
+    }
+    if PID == 1
+    {
+        e.spr.color = C_PLAYER_TWO_SPAWN
+    }
+   
+    e.rec = Rectangle{ f32(X), f32(Y), f32(16 * SCALE), f32(16 * SCALE) }
+    println(e.rec.x, e.rec.y)
+
+    e.timer = 0
+    e.dur   = .1
+
+    expl_dt_pool[expl_count] = e
+    expl_count += 1
 }
