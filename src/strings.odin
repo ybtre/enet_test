@@ -1,3 +1,3 @@
-package PushChase
+package main
 
-project_name :: "Push Chase!"
+project_name :: "SDL2 Net"

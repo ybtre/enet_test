@@ -1,16 +1,24 @@
-package PushChase
+package main
 
 import RL "vendor:raylib"
 
 // ---------- WINDOW
 SCREEN          : RL.Vector2    : { 720, 720 }
 
-// ---------- GAME
+// ---------- GAME 
 SCALE           :: 4
 
-// ---------- TEXTURES
-PATH_SPRITESHEET    :: `../assets/spritesheet.png`
-PATH_BACKGROUND     :: `../assets/background.png`
+// ---------- SERVER 
+MAX_PACKET       ::     0xFF        // 255
+MAX_SOCKETS      ::     0x10        // 16
+
+WOOD_WAIT_TIME   ::     5000        //MS 
+
+FLAG_QUIT        ::     0x0000  
+FLAG_WOOD_UPDATE ::     0x0010
+
+
+// ---------- CLIENT
 
 // ---------- COLOR
 C_PLAYER            :: RL.Color{ 235, 162, 84, 255}

@@ -1,17 +1,14 @@
-package PushChase
+package main
 
 import rl "vendor:raylib"
 
-Sprite :: struct 
-{
-    src         : rl.Rectangle,
-    color       : rl.Color,
-    center      : rl.Vector2,
-}
+//--------- SERVER
 
-Background :: struct
+//--------- CLIENT
+Client :: struct 
 {
-    active      : bool,
-    rec         : rl.Rectangle,
-    spr         : Sprite,
+    in_use      : i32,  // is current user being used by active socker connection
+    questing    : i32,
+    amt_wood    : u8,   // amount of wood client has
+    timer_wood  : u32,  
 }

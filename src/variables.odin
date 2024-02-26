@@ -1,13 +1,18 @@
-package PushChase
+package main
 
 import RL "vendor:raylib"
+import net "vendor:sdl2/net"
 
 // --------- STRUCTS
-bg      : Background
 
-// --------- TEXTURES
-tex_spritesheet 	:  RL.Texture2D  
-tex_background      :  RL.Texture2D
+// --------- SERVER
+next_ind        : int                           // index into sockets and clients array for the next player to connect
+server_socker   : net.TCPsocket
+clients         : [MAX_SOCKETS]Client
+socket_set      : net.SocketSet
+sockets         : [MAX_SOCKETS]net.TCPsocket
+
+// --------- CLIENT
 
 
 // --------- BOOLS
